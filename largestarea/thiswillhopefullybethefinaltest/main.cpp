@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
 	/*for(int j = 0; j < 1000; j++)
 	{*/
 
-	GaussianBlur(mothframe,mothframe1, Size(31,31),0,0); //blurs image to aid in contour finding-size significantly slows down program
+	GaussianBlur(mothframe,mothframe1, Size(31,31),0,0); //blurs image to aid in contour finding
 	threshold(mothframe1, mothframe2, 140, 255, THRESH_BINARY); // thresholds image to create black and white
 	Canny(mothframe2,mothframe3, 1,255, 3); //marks edjes of blurred image
 	findContours(mothframe3, contourvector, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0,0)); //finds and stores contours
