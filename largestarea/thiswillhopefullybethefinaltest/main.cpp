@@ -29,9 +29,6 @@ time_t starttime;
 time_t endtime;
 double difference;
 
-bool on = false;
-
-
 double findbiggest(vector<vector<Point> > vector) //returns contour number with greatest area
 {
 	double max = 0;
@@ -49,42 +46,20 @@ double findbiggest(vector<vector<Point> > vector) //returns contour number with 
 	}
 	return  max;
 }
-
 void savecoordinates() //saves coordinates to txt file
 {
 	SaveFile<<"Contour, Contour Area, Contour Center, Rectangle Size"<<endl;
 		SaveFile<<largestcontour<<" , "<<largestcontourarea<<" , "<<rectangle1.center<<"  , "<<rectangle1.size<<endl; 
 }
-
 int main(int argc, char* argv[])  
 {
 	VideoCapture cap(0);   // camera 
-	int d = 0;
+	
 	while(true)
 	{
-	 d = d + 1;
-	 int remain = d % 60;
-	 if(remain == 0)
-	 {
-		 if(on)
-		 {
-			 on = false;
-		 }
-		 else
-		 {
-			 on = true;
-		 }
-
-	 }
-	 if(on)
-	 {
+	
 	 mothframe = imread("whiteout-0000000373.ppm");
-	 }
-	 else
-	 {
-		  mothframe = imread("whiteout-0000000001.ppm");
-	 }
-	 
+	
 	//bool readframe = cap.read(mothframe);  // camera reads to mat mothframe  
 	//if(readframe != true) // checks to see if read
 	//{
