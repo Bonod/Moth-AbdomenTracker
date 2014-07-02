@@ -8,26 +8,46 @@
 #include <windows.h>
 #include <fstream>
 #include <time.h>
+#include <math.h>
+#include <stdlib.h>
+//#include "cppzmq-master\zmq.hpp"
 #include "C:\opencv\build\include\opencv\cv.h"
 #include "C:\opencv\build\include\opencv\highgui.h"
+//#include "C:\Program Files (x86)\ZeroMQ 4.0.4\include\zmq.h"
+//#include "cppzmq-master\zmq.hpp"
+//#include "C:\Program Files\ZeroMQ 4.0.4\include\zmq.h"
+//#include "zmq.hpp"
+
+
 using namespace cv;
 using namespace std;
 
-ofstream SaveFile("dotstats.txt");
+ofstream SaveFile("dotstats.csv");
 
+Mat showROI;
 Mat mothframe; // image frame of video
+Mat mothframe0;
 Mat mothframe1; //blurred image
 Mat mothframe2; //converted frame by threshold
 Mat mothframe3; // contoured frame
+Rect ROI;
 vector<vector<Point> > contourvector; // vector of contour vectors
 vector<Vec4i> hierarchy;
 RotatedRect rectangle1; //rectangle used to find center 
 int largestcontour; //variable for storing largest contour
 double largestcontourarea; //variable for storing largest contour area
-
-time_t starttime;
-time_t endtime;
-double difference;
+float rectcenter[2];
+int framenumber = 0;
+int paddedframe;
+string fileorigin = "whiteout/whiteout-"; 
+string file = fileorigin;
+int thresholdvalue = 200;
+bool reached = false;
+int window[2]= {335, 210};
+int approxlocation[2] = {250,130};
+int windowsize = 200;
+int currentoffsetx = 335-windowsize;
+int currentoffsety = 210-windowsize;
 
 double findbiggest(vector<vector<Point> > vector) //returns contour number with greatest area
 {
@@ -46,67 +66,142 @@ double findbiggest(vector<vector<Point> > vector) //returns contour number with 
 	}
 	return  max;
 }
-void savecoordinates() //saves coordinates to txt file
+void filename() //iterates through files
 {
-	SaveFile<<"Contour, Contour Area, Contour Center, Rectangle Size"<<endl;
-		SaveFile<<largestcontour<<" , "<<largestcontourarea<<" , "<<rectangle1.center<<"  , "<<rectangle1.size<<endl; 
+	
+	file = "whiteout/img/f";
+	ostringstream convert;
+	convert<< setw (5) << setfill('0') <<framenumber;
+	string number = convert.str();
+	file.append(number);
+	file.append(".jpg");
+	//cout<<file;
 }
-int main(int argc, char* argv[])  
+void imageprocess()
 {
-	VideoCapture cap(0);   // camera 
-	
-	while(true)
+	//mothframe = mothframe0;
+	if(window[0] > mothframe0.cols - windowsize)
 	{
+		window[0] = mothframe0.cols - windowsize;
+	}
+	else if(window[0] < windowsize)
+	{
+		window[0] = windowsize;
+	}
+	if(window[1] > mothframe0.rows-windowsize)
+	{
+		window[1] = mothframe0.rows - windowsize ;
+	}
+	else if(window[1] < windowsize)
+	{
+		window[1] = windowsize;
+	}
 	
-	 mothframe = imread("whiteout-0000000373.ppm");
 	
-	//bool readframe = cap.read(mothframe);  // camera reads to mat mothframe  
-	//if(readframe != true) // checks to see if read
-	//{
-	//		cout<<"not reading camera"<<endl;
-	//		break; 
-	//}
-	//time(&starttime);
-	/*for(int j = 0; j < 1000; j++)
-	{*/
+	
+	ROI = Rect(window[0]-windowsize, window[1]-windowsize, 2 * windowsize,2 * windowsize);
+	mothframe = mothframe0(ROI);
+	
+	currentoffsetx = window[0]- windowsize;
+	currentoffsety = window[1] - windowsize;
 
+	//if(framenumber > 5 && reached)
+	//{
+		//mothframe = mothframe0(Rect(window[0]-60, window[1]-60, 120, 120) );//Rect(window[0]-windowsize,window[0]+windowsize, window[1]-windowsize,window[1] + windowsize));
+		//mothframe = mothframe0(Rect(ROI));
+	
+		
+	/*}
+	else
+	{
+		mothframe = mothframe0;
+	}*/
 	GaussianBlur(mothframe,mothframe1, Size(31,31),0,0); //blurs image to aid in contour finding
-	threshold(mothframe1, mothframe2, 140, 255, THRESH_BINARY); // thresholds image to create black and white
+	threshold(mothframe1, mothframe2, thresholdvalue, 255, THRESH_BINARY); // thresholds image to create black and white
 	Canny(mothframe2,mothframe3, 1,255, 3); //marks edjes of blurred image
 	findContours(mothframe3, contourvector, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0,0)); //finds and stores contours
+	
 
 	if(contourvector.size() > 0)
 	{
 	largestcontour = findbiggest(contourvector);
+	
 	largestcontourarea = contourArea(contourvector[largestcontour]);
 	rectangle1 = minAreaRect(contourvector[largestcontour]); //finds rectangle to find center
-	circle(mothframe3, rectangle1.center, 10 ,Scalar(150,150,150),3,8,0); //draws circle
+	circle(mothframe, rectangle1.center, 10 ,Scalar(150,150,150),3,8,0); //draws circle
+
+	window[0] = rectangle1.center.x + currentoffsetx; //would be used for region of interest
+	window[1] = rectangle1.center.y + currentoffsety;
+
+	
+		
+
+
+	
+
+	
+
+	//rectangle(mothframe0,   ROI, Scalar(150,150,150),4,8,0); //not working ????
 	}
 
-	//}
-	//time(&endtime);
-	/*difference = difftime(endtime, starttime);
-	cout<<difference;
-	*/
+}
+void findthresh()
+{
+	while(!reached)
+	{
+	imageprocess();
+	if(abs(rectangle1.center.x - approxlocation[0]) < 50 && abs(rectangle1.center.y - approxlocation[1]) < 50)
+	{
+		thresholdvalue--;
+	}
+	else
+	{
+		reached = true;
+	}
+	contourvector.clear(); //clears stuff
+	hierarchy.clear();
+	}
+}
+void saveandsendcoordinates() //saves coordinates to txt file
+{
+	//SaveFile<<"Contour, Contour Area, Contour Center, Rectangle Size"<<endl;
+		//SaveFile<<largestcontour<<" , "<<largestcontourarea<<" , "<<rectangle1.center<<"  , "<<rectangle1.size<<endl; 
+	rectcenter[0] = window[0];
+	rectcenter[1] = window[1];
+	SaveFile<<rectcenter[0]<<","<<rectcenter[1]<<endl;
+	//insert zmq code 
+}
 
+int main()  
+{
+	//VideoCapture cap("video.mp4");   // camera 
+	filename();
+	mothframe0 = imread(file);
+	findthresh();// may be good to turn loop in main to independent function and integrate here
+	
+	while(true)
+	{
+	filename();
+	mothframe0 = imread(file);
+	imageprocess();
 	namedWindow("Window1", CV_WINDOW_AUTOSIZE);
 	namedWindow("Window2", CV_WINDOW_AUTOSIZE);
 	namedWindow("Window3", CV_WINDOW_AUTOSIZE); 
 	namedWindow("Window4", CV_WINDOW_AUTOSIZE); 
+	namedWindow("Window5", CV_WINDOW_AUTOSIZE); 
 	imshow("Window1", mothframe); //displays windows
 	imshow("Window2", mothframe1);
-	imshow("Window3", mothframe2);
+	imshow("Window3", mothframe0);
 	imshow("Window4", mothframe3);
-    
+	
 	if(waitKey(20) == 27) //required; escape to quit
 	{
 			break;
 	}
-	/*char wait;
-	cin>>wait;*/
-	savecoordinates();
+	saveandsendcoordinates();
 	contourvector.clear(); //clears stuff
 	hierarchy.clear();
+	framenumber++;
 	}
 	SaveFile.close();
 	return 0;
