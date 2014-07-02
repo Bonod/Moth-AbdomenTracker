@@ -18,36 +18,34 @@
 //#include "C:\Program Files\ZeroMQ 4.0.4\include\zmq.h"
 //#include "zmq.hpp"
 
-
-using namespace cv;
-using namespace std;
+using namespace::cv;
+using namespace::std;
 
 ofstream SaveFile("dotstats.csv");
 
-Mat showROI;
+
 Mat mothframe; // image frame of video
 Mat mothframe0;
 Mat mothframe1; //blurred image
 Mat mothframe2; //converted frame by threshold
 Mat mothframe3; // contoured frame
-Rect ROI;
+Rect ROI; //used to define region of interest
 vector<vector<Point> > contourvector; // vector of contour vectors
-vector<Vec4i> hierarchy;
+vector<Vec4i> hierarchy; //used by canny
 RotatedRect rectangle1; //rectangle used to find center 
 int largestcontour; //variable for storing largest contour
 double largestcontourarea; //variable for storing largest contour area
-float rectcenter[2];
-int framenumber = 0;
-int paddedframe;
-string fileorigin = "whiteout/whiteout-"; 
-string file = fileorigin;
-int thresholdvalue = 200;
-bool reached = false;
-int window[2]= {335, 210};
+float rectcenter[2]; //points used to save/send center of minrect around tracked object
+int framenumber = 0; //frame number
+string fileorigin = "whiteout/whiteout-";  //used to find file name
+string file = fileorigin; 
+int thresholdvalue = 200; //starting threshold
+bool reached = false; //used to indicate if threshold has been found
+int window[2]= {335, 210}; //starting roi coords, region should be in shape
 int approxlocation[2] = {250,130};
-int windowsize = 200;
-int currentoffsetx = 335-windowsize;
-int currentoffsety = 210-windowsize;
+int windowsize = 200; //roi size
+int currentoffsetx = 335-windowsize; //must take initial window dimensions, used for relating ROI to parent image
+int currentoffsety = 210-windowsize; 
 
 double findbiggest(vector<vector<Point> > vector) //returns contour number with greatest area
 {
@@ -66,9 +64,8 @@ double findbiggest(vector<vector<Point> > vector) //returns contour number with 
 	}
 	return  max;
 }
-void filename() //iterates through files
+void filename() //iterates through files, gets the file name, dependent on file location
 {
-	
 	file = "whiteout/img/f";
 	ostringstream convert;
 	convert<< setw (5) << setfill('0') <<framenumber;
@@ -76,8 +73,8 @@ void filename() //iterates through files
 	file.append(number);
 	file.append(".jpg");
 	//cout<<file;
-}
-void imageprocess()
+} 
+void imageprocess() //does all the image computation
 {
 	//mothframe = mothframe0;
 	if(window[0] > mothframe0.cols - windowsize)
@@ -97,25 +94,11 @@ void imageprocess()
 		window[1] = windowsize;
 	}
 	
-	
-	
 	ROI = Rect(window[0]-windowsize, window[1]-windowsize, 2 * windowsize,2 * windowsize);
 	mothframe = mothframe0(ROI);
 	
 	currentoffsetx = window[0]- windowsize;
 	currentoffsety = window[1] - windowsize;
-
-	//if(framenumber > 5 && reached)
-	//{
-		//mothframe = mothframe0(Rect(window[0]-60, window[1]-60, 120, 120) );//Rect(window[0]-windowsize,window[0]+windowsize, window[1]-windowsize,window[1] + windowsize));
-		//mothframe = mothframe0(Rect(ROI));
-	
-		
-	/*}
-	else
-	{
-		mothframe = mothframe0;
-	}*/
 	GaussianBlur(mothframe,mothframe1, Size(31,31),0,0); //blurs image to aid in contour finding
 	threshold(mothframe1, mothframe2, thresholdvalue, 255, THRESH_BINARY); // thresholds image to create black and white
 	Canny(mothframe2,mothframe3, 1,255, 3); //marks edjes of blurred image
@@ -132,16 +115,6 @@ void imageprocess()
 
 	window[0] = rectangle1.center.x + currentoffsetx; //would be used for region of interest
 	window[1] = rectangle1.center.y + currentoffsety;
-
-	
-		
-
-
-	
-
-	
-
-	//rectangle(mothframe0,   ROI, Scalar(150,150,150),4,8,0); //not working ????
 	}
 
 }
@@ -171,24 +144,23 @@ void saveandsendcoordinates() //saves coordinates to txt file
 	SaveFile<<rectcenter[0]<<","<<rectcenter[1]<<endl;
 	//insert zmq code 
 }
-
 int main()  
 {
 	//VideoCapture cap("video.mp4");   // camera 
 	filename();
-	mothframe0 = imread(file);
+	mothframe0 = imread(file); 
 	findthresh();// may be good to turn loop in main to independent function and integrate here
 	
 	while(true)
 	{
-	filename();
+	filename(); 
 	mothframe0 = imread(file);
 	imageprocess();
 	namedWindow("Window1", CV_WINDOW_AUTOSIZE);
 	namedWindow("Window2", CV_WINDOW_AUTOSIZE);
 	namedWindow("Window3", CV_WINDOW_AUTOSIZE); 
 	namedWindow("Window4", CV_WINDOW_AUTOSIZE); 
-	namedWindow("Window5", CV_WINDOW_AUTOSIZE); 
+	
 	imshow("Window1", mothframe); //displays windows
 	imshow("Window2", mothframe1);
 	imshow("Window3", mothframe0);
